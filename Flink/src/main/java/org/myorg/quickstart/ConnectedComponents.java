@@ -6,6 +6,7 @@
 package org.myorg.quickstart;
 
 import org.apache.flink.api.common.ProgramDescription;
+import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -38,11 +39,21 @@ public class ConnectedComponents implements ProgramDescription {
                 .fieldDelimiter(" ")
                 .includeFields("1101")
                 .types(Long.class, Long.class, Long.class);
-        
+
         Graph<Long, NullValue, Long> graph = Graph.fromTupleDataSet(edges, env);
-        System.out.println(graph.getEdges().count());
-        System.out.println(graph.getVertices().count());
-        //Graph<Long, String, Integer> graph = Graph.fromDataSet(vertices, edges, env);
+        System.out.println(graph.subgraph(
+                new FilterFunction<Vertex<Long, NullValue>>() {
+            @Override
+            public boolean filter(Vertex<Long, NullValue> vertex) {
+                return true;
+            }
+        },
+                new FilterFunction<Edge<Long, Long>>() {
+            @Override
+            public boolean filter(Edge<Long, Long> edge) {
+                return edge.getValue() > 0;
+            }
+        }).numberOfEdges());
     }
 
     @Override
