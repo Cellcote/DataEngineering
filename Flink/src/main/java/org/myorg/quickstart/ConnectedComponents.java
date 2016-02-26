@@ -14,6 +14,7 @@ import org.apache.flink.api.java.operators.DistinctOperator;
 import org.apache.flink.api.java.operators.UnionOperator;
 import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.graph.Edge;
 import org.apache.flink.graph.Graph;
 import org.apache.flink.graph.Vertex;
@@ -32,21 +33,16 @@ public class ConnectedComponents implements ProgramDescription {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
         String filePath = "facebook";
+
+        DataSet<Tuple3<Long, Long, Long>> edges = env.readCsvFile(filePath)
+                .fieldDelimiter(" ")
+                .includeFields("1101")
+                .types(Long.class, Long.class, Long.class);
         
-        DataSource<Tuple1<Long>> firstVariable = env.readCsvFile(filePath)
-                .fieldDelimiter(" ")
-                .includeFields("1000")
-                .types(Long.class);
-        DataSource<Tuple1<Long>> secondVariable = env.readCsvFile(filePath)
-                .fieldDelimiter(" ")
-                .includeFields("0100")
-                .types(Long.class);
-        UnionOperator<Tuple1<Long>> vertices = firstVariable.union(secondVariable);
-        DistinctOperator<Tuple1<Long>> vertices1 = vertices.distinct();
-        System.out.println(vertices1.count());
-//DataSet<Edge<Long, Integer>> edges = 
-//
-//    Graph<Long, String, Integer> graph = Graph.fromDataSet(vertices, edges, env);
+        Graph<Long, NullValue, Long> graph = Graph.fromTupleDataSet(edges, env);
+        System.out.println(graph.getEdges().count());
+        System.out.println(graph.getVertices().count());
+        //Graph<Long, String, Integer> graph = Graph.fromDataSet(vertices, edges, env);
     }
 
     @Override
