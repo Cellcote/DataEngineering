@@ -14,6 +14,10 @@ import org.apache.flink.graph.Edge;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.graph.Graph;
 import org.apache.flink.graph.Vertex;
+import org.apache.flink.graph.gsa.ApplyFunction;
+import org.apache.flink.graph.gsa.GatherFunction;
+import org.apache.flink.graph.gsa.Neighbor;
+import org.apache.flink.graph.gsa.SumFunction;
 import org.apache.flink.graph.spargel.MessageIterator;
 import org.apache.flink.graph.spargel.MessagingFunction;
 import org.apache.flink.graph.spargel.VertexUpdateFunction;
@@ -43,8 +47,7 @@ public class APSP implements ProgramDescription {
             }
         }, env).getUndirected();
         
-        Graph<Long, Long, Long> result = graph.runVertexCentricIteration(
-                new VertexDistanceUpdater(), new MinDistanceMessenger(), maxIterations);
+        Graph<Long, Long, Long> result = graph.runGatherSumApplyIteration(new CalculateDistances(), new ChooseMinDistance(), new UpdateDistance(), maxIterations);
         
         DataSet<Vertex<Long, Long>> singleSourceShortestPaths = result.getVertices();
         singleSourceShortestPaths.print();
@@ -57,31 +60,30 @@ public class APSP implements ProgramDescription {
         return "Get All pair shortest paths Example";
     }
     
-    public static final class MinDistanceMessenger extends MessagingFunction<Long, Long, Long, Long> {
-		@Override
-		public void sendMessages(Vertex<Long, Long> vertex) {
-			for (Edge<Long, Long> edge : getEdges()) {
-				sendMessageTo(edge.getTarget(), vertex.getValue() + edge.getValue());
+    @SuppressWarnings("serial")
+	private static final class CalculateDistances extends GatherFunction<Long, Long, Long> {
+
+                @Override
+		public Long gather(Neighbor<Long, Long> neighbor) {
+			return neighbor.getNeighborValue() + 1;
+		}
+	};
+
+	@SuppressWarnings("serial")
+	private static final class ChooseMinDistance extends SumFunction<Long, Long, Long> {
+
+		public Long sum(Long newValue, Long currentValue) {
+			return Math.min(newValue, currentValue);
+		}
+	};
+
+	@SuppressWarnings("serial")
+	private static final class UpdateDistance extends ApplyFunction<Long, Long, Long> {
+
+		public void apply(Long newDistance, Long oldDistance) {
+			if (newDistance < oldDistance) {
+				setResult(newDistance);
 			}
 		}
 	}
-    	public static final class VertexDistanceUpdater extends VertexUpdateFunction<Long, Long, Long> {
-
-		@Override
-		public void updateVertex(Vertex<Long, Long> vertex, MessageIterator<Long> inMessages) {
-
-			Long minDistance = Long.MAX_VALUE;
-
-			for (Long msg : inMessages) {
-				if (msg < minDistance) {
-					minDistance = msg;
-				}
-			}
-
-			if (vertex.getValue() > minDistance) {
-				setNewVertexValue(minDistance);
-			}
-		}
-	}
-
 }
