@@ -26,7 +26,7 @@ import org.apache.flink.graph.spargel.VertexUpdateFunction;
  *
  * @author rikschreurs
  */
-public class APSP implements ProgramDescription {
+public class Test implements ProgramDescription {
     private static int maxIterations = 5;
     
     public static void main(String[] args) throws Exception {
@@ -72,6 +72,7 @@ public class APSP implements ProgramDescription {
 	@SuppressWarnings("serial")
 	private static final class ChooseMinDistance extends SumFunction<Long, Long, Long> {
 
+                @Override
 		public Long sum(Long newValue, Long currentValue) {
 			return Math.min(newValue, currentValue);
 		}
@@ -80,6 +81,7 @@ public class APSP implements ProgramDescription {
 	@SuppressWarnings("serial")
 	private static final class UpdateDistance extends ApplyFunction<Long, Long, Long> {
 
+                @Override
 		public void apply(Long newDistance, Long oldDistance) {
 			if (newDistance < oldDistance) {
 				setResult(newDistance);
