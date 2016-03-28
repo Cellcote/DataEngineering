@@ -6,6 +6,7 @@
 package org.myorg.quickstart;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.flink.api.common.ProgramDescription;
@@ -35,48 +36,85 @@ public class ColdStart implements ProgramDescription {
 
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        String filePath = "facebook";
+        String filePath = "youtube";
 
         DataSet<Tuple3<Long, Long, Long>> edges = env.readCsvFile(filePath)
                 .fieldDelimiter(" ")
+                .ignoreComments("%")
                 .includeFields("1101")
                 .types(Long.class, Long.class, Long.class);
-
-        Graph<Long, List<Long>, Long> graph = Graph.fromTupleDataSet(edges, new MapFunction<Long, List<Long>>() {
-            @Override
-            public List<Long> map(Long value) throws Exception {
-                return new ArrayList<>();
-            }
-        }, env).getUndirected();
-
-        DataSet<Tuple2<Long, List<Long>>> groupedGraph = graph.groupReduceOnEdges(new EdgesFunctionWithVertexValue<Long, List<Long>, Long, Tuple2<Long, List<Long>>>() {
-            @Override
-            public void iterateEdges(Vertex<Long, List<Long>> vertex, Iterable<Edge<Long, Long>> edgeIterable, Collector<Tuple2<Long, List<Long>>> out) throws Exception {
-                List<Long> edgeValues = new ArrayList();
-                Iterator<Edge<Long, Long>> iterator = edgeIterable.iterator();
-                while(iterator.hasNext()) {
-                    Long edgeValue = iterator.next().getValue();
-                    edgeValues.add(edgeValue);
+        //System.out.println(edges.maxBy(2).collect().get(0).f2 - edges.minBy(2).collect().get(0).f2);
+        //System.out.println(edges.maxBy(2).collect().get(0).f2 + " - " + edges.minBy(2).collect().get(0).f2);
+        Long totalTime = edges.maxBy(2).collect().get(0).f2 - edges.minBy(2).collect().get(0).f2;
+        Long timeUnit = 30l * 24l * 60l * 60l;
+        Long beginTime = edges.minBy(2).collect().get(0).f2;
+        Long iterations = totalTime / timeUnit;
+        //System.out.println(iterations);
+        //System.out.println(edges.maxBy(2).collect().get(0).f2);
+        double[] results = new double[iterations.intValue()];
+        for (int i = 0; i < iterations; i++) {
+            results[i] = 0l;
+            final Long filterTime = + i * timeUnit;
+            DataSet<Tuple3<Long, Long, Long>> localEdges = edges.filter(new FilterFunction<Tuple3<Long, Long, Long>>() {
+                @Override
+                public boolean filter(Tuple3<Long, Long, Long> value) throws Exception {
+                    return value.f2 <= filterTime;
                 }
-                out.collect(new Tuple2<>(vertex.getId(), edgeValues));
+            });
+            System.out.println(localEdges.count());
+            Graph<Long, List<Long>, Long> graph = Graph.fromTupleDataSet(localEdges, new MapFunction<Long, List<Long>>() {
+                @Override
+                public List<Long> map(Long value) throws Exception {
+                    return new ArrayList<>();
+                }
+            }, env).getUndirected();
+            DataSet<Tuple2<Long, List<Long>>> groupedGraph = graph.groupReduceOnEdges(new EdgesFunctionWithVertexValue<Long, List<Long>, Long, Tuple2<Long, List<Long>>>() {
+                @Override
+                public void iterateEdges(Vertex<Long, List<Long>> vertex, Iterable<Edge<Long, Long>> edgeIterable, Collector<Tuple2<Long, List<Long>>> out) throws Exception {
+                    List<Long> edgeValues = new ArrayList();
+                    Iterator<Edge<Long, Long>> iterator = edgeIterable.iterator();
+                    while (iterator.hasNext()) {
+                        Long edgeValue = iterator.next().getValue();
+                        edgeValues.add(edgeValue);
+                    }
+                    edgeValues.sort(new Comparator<Long>() {
+                        @Override
+                        public int compare(Long o1, Long o2) {
+                            return o1.compareTo(o2);
+                        }
+                    });
+                    if (edgeValues.size() > 0) {
+                        long reduction = edgeValues.get(0);
+                        for (int i = 0; i < edgeValues.size(); i++) {
+                            edgeValues.set(i, edgeValues.get(i) - reduction);
+                        }
+                    }
+                    out.collect(new Tuple2<>(vertex.getId(), edgeValues));
+                }
+            }, EdgeDirection.IN);
+            System.out.println(groupedGraph.count());
+            
+            groupedGraph.filter(new FilterFunction<Tuple2<Long, List<Long>>>() {
+                @Override
+                public boolean filter(Tuple2<Long, List<Long>> value) throws Exception {
+                    return value.f1.size() >= 10;
+                }
+            });
+            List<Tuple2<Long, List<Long>>> list = groupedGraph.collect();
+            for(int j = 0; j < list.size(); j++) {
+                results[i] += (double) list.get(j).f1.size()/ (double)list.size();
             }
-        }, EdgeDirection.IN);
-        System.out.println(groupedGraph.count());
-        //groupedGraph.print();
-        //System.out.println(groupedGraph.count());
-        groupedGraph.filter(new FilterFunction<Tuple2<Long, List<Long>>>() {
-            @Override
-            public boolean filter(Tuple2<Long, List<Long>> value) throws Exception {
-                return value.f1.size() >= 10;
-            }
-        }).print();
+            
+        }
+        for(int i = 0; i < results.length; i++) {
+            System.out.println("Month " + i + ": "+ results[i]);
+        }
+
         //System.out.println(groupedGraph.count());
         //DataSet<Tuple2<Long, Long>> friends = graph.reduceOnEdges(new SelectMinWeight(), EdgeDirection.IN);
         //System.out.println(friends.count());
         //friends.print();
-
     }
-
 
     @Override
     public String getDescription() {
