@@ -55,11 +55,12 @@ public class ConnectedComponentsProperty implements ProgramDescription {
     }
     
     public static void main(String[] args) throws Exception {
-        Double total = 0.0;
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        String filePath = "facebook";
-        long srcId = 56143;
+        String filePath = "data/facebook-wosn-links/out.facebook-wosn-links";
+        //String filePath = "data/youtube-u-growth/out.youtube-u-growth";
+        //String filePath = "data/flickr-growth/out.flickr-growth";
+        
         DataSet<Tuple3<Long, Long, Long>> edges = env
                 .readCsvFile(filePath)
                 .fieldDelimiter(" ")
@@ -103,13 +104,7 @@ public class ConnectedComponentsProperty implements ProgramDescription {
                             return monthFromTimestamp(timestamp) == month;
                         }
                     })
-//                    .filterOnVertices(new FilterFunction<Vertex<Long, Long>>() {
-//                        @Override
-//                        public boolean filter(Vertex<Long, Long> t) throws Exception {
-//                            return true;
-//                        }
-//                    })
-                    .run(new GSAConnectedComponents<Long, Long>(10))
+                    .run(new ConnectedComponents<Long, Long>(10))
                     .distinct(1)
                     .count();
             
