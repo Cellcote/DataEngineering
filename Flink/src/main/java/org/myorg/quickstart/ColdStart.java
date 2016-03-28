@@ -52,62 +52,79 @@ public class ColdStart implements ProgramDescription {
         //System.out.println(iterations);
         //System.out.println(edges.maxBy(2).collect().get(0).f2);
         double[] results = new double[iterations.intValue()];
-        for (int i = 0; i < iterations; i++) {
-            results[i] = 0l;
-            final Long filterTime = + i * timeUnit;
-            DataSet<Tuple3<Long, Long, Long>> localEdges = edges.filter(new FilterFunction<Tuple3<Long, Long, Long>>() {
-                @Override
-                public boolean filter(Tuple3<Long, Long, Long> value) throws Exception {
-                    return value.f2 <= filterTime;
-                }
-            });
-            System.out.println(localEdges.count());
-            Graph<Long, List<Long>, Long> graph = Graph.fromTupleDataSet(localEdges, new MapFunction<Long, List<Long>>() {
-                @Override
-                public List<Long> map(Long value) throws Exception {
-                    return new ArrayList<>();
-                }
-            }, env).getUndirected();
-            DataSet<Tuple2<Long, List<Long>>> groupedGraph = graph.groupReduceOnEdges(new EdgesFunctionWithVertexValue<Long, List<Long>, Long, Tuple2<Long, List<Long>>>() {
-                @Override
-                public void iterateEdges(Vertex<Long, List<Long>> vertex, Iterable<Edge<Long, Long>> edgeIterable, Collector<Tuple2<Long, List<Long>>> out) throws Exception {
-                    List<Long> edgeValues = new ArrayList();
-                    Iterator<Edge<Long, Long>> iterator = edgeIterable.iterator();
-                    while (iterator.hasNext()) {
-                        Long edgeValue = iterator.next().getValue();
-                        edgeValues.add(edgeValue);
-                    }
-                    edgeValues.sort(new Comparator<Long>() {
-                        @Override
-                        public int compare(Long o1, Long o2) {
-                            return o1.compareTo(o2);
-                        }
-                    });
-                    if (edgeValues.size() > 0) {
-                        long reduction = edgeValues.get(0);
-                        for (int i = 0; i < edgeValues.size(); i++) {
-                            edgeValues.set(i, edgeValues.get(i) - reduction);
-                        }
-                    }
-                    out.collect(new Tuple2<>(vertex.getId(), edgeValues));
-                }
-            }, EdgeDirection.IN);
-            System.out.println(groupedGraph.count());
-            
-            groupedGraph.filter(new FilterFunction<Tuple2<Long, List<Long>>>() {
-                @Override
-                public boolean filter(Tuple2<Long, List<Long>> value) throws Exception {
-                    return value.f1.size() >= 10;
-                }
-            });
-            List<Tuple2<Long, List<Long>>> list = groupedGraph.collect();
-            for(int j = 0; j < list.size(); j++) {
-                results[i] += (double) list.get(j).f1.size()/ (double)list.size();
+
+        Graph<Long, List<Long>, Long> graph = Graph.fromTupleDataSet(edges, new MapFunction<Long, List<Long>>() {
+            @Override
+            public List<Long> map(Long value) throws Exception {
+                return new ArrayList<>();
             }
-            
+        }, env).getUndirected();
+        DataSet<Tuple2<Long, List<Long>>> groupedGraph = graph.groupReduceOnEdges(new EdgesFunctionWithVertexValue<Long, List<Long>, Long, Tuple2<Long, List<Long>>>() {
+            @Override
+            public void iterateEdges(Vertex<Long, List<Long>> vertex, Iterable<Edge<Long, Long>> edgeIterable, Collector<Tuple2<Long, List<Long>>> out) throws Exception {
+                List<Long> edgeValues = new ArrayList();
+                Iterator<Edge<Long, Long>> iterator = edgeIterable.iterator();
+                while (iterator.hasNext()) {
+                    Long edgeValue = iterator.next().getValue();
+                    edgeValues.add(edgeValue);
+                }
+                edgeValues.sort(new Comparator<Long>() {
+                    @Override
+                    public int compare(Long o1, Long o2) {
+                        return o1.compareTo(o2);
+                    }
+                });
+                if (edgeValues.size() > 0) {
+                    long reduction = edgeValues.get(0);
+                    for (int i = 0; i < edgeValues.size(); i++) {
+                        edgeValues.set(i, edgeValues.get(i) - reduction);
+                    }
+                }
+                out.collect(new Tuple2<>(vertex.getId(), edgeValues));
+            }
+        }, EdgeDirection.IN);
+        List<Tuple2<Long, List<Long>>> list = groupedGraph.collect();
+        double[] std = new double[iterations.intValue()];
+        for (int i = 0; i < iterations; i++) {
+            results[i] = 0;
+            std[i] = 0;
+            int users = 0;
+            Long filterTime = i * timeUnit;
+            for (int j = 0; j < list.size(); j++) {
+                boolean isCounted = false;
+                for (int k = 0; k < list.get(j).f1.size(); k++) {
+                    Long value = list.get(j).f1.get(k);
+                    if (value <= filterTime) {
+                        if (!isCounted) {
+                            users++;
+                            isCounted = true;
+                        }
+                        results[i] += 1;
+                    }
+                }
+            }
+            results[i] /= (double) users;
+            for (int j = 0; j < list.size(); j++) {
+                double counter = 0;
+                boolean isCounted = false;
+                for (int k = 0; k < list.get(j).f1.size(); k++) {
+                    Long value = list.get(j).f1.get(k);
+                    if (value <= filterTime) {
+                        if (!isCounted) {
+                            isCounted = true;
+                        }
+                        counter++;
+                    }
+                }
+                if(isCounted) {
+                    std[i] += (counter-results[i])*(counter-results[i]);
+                }
+
+            }
+            std[i] = Math.sqrt(std[i]/(double)users);
         }
-        for(int i = 0; i < results.length; i++) {
-            System.out.println("Month " + i + ": "+ results[i]);
+        for (int i = 0; i < results.length; i++) {
+            System.out.println("Month " + i + ": " + results[i] +" with std: "+std[i]);
         }
 
         //System.out.println(groupedGraph.count());
