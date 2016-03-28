@@ -15,6 +15,7 @@ import org.apache.flink.api.common.ProgramDescription;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.GroupCombineFunction;
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -97,9 +98,10 @@ public class ConnectedComponentsProperty implements ProgramDescription {
 
         //For each month, calculate the number of connected components
         List<Long> counts = new ArrayList<>();
-        List<Long> minimumGroupSizes = new ArrayList<>();
-        List<Long> maximumGroupSizes = new ArrayList<>();
-        List<Long> averageGroupSizes = new ArrayList<>();
+        List<Long> groupSizeMinimums = new ArrayList<>();
+        List<Long> groupSizeMaximums = new ArrayList<>();
+        List<Double> groupSizeAverages = new ArrayList<>();
+        List<Double> groupSizeStandardDeviations = new ArrayList<>();
         for (final Long month : months) {
             DataSet<Vertex<Long, Long>> vertexId_groupId = graph
                 .filterOnEdges(new FilterFunction<Edge<Long, Long>>() {
@@ -131,7 +133,6 @@ public class ConnectedComponentsProperty implements ProgramDescription {
                                 if(groupId == -1)
                                     groupId = a.f1;
                                 
-                                System.out.println(a.f1);
                                 count++;
                             }
                             clctr.collect(new Vertex<Long, Long>(groupId, count));
@@ -142,24 +143,47 @@ public class ConnectedComponentsProperty implements ProgramDescription {
                     .minBy(1)
                     .collect()
                     .get(0).f1;
-            minimumGroupSizes.add(minGroupSize);
+            groupSizeMinimums.add(minGroupSize);
             
             long maxGroupSize = groupId_groupSize
                     .maxBy(1)
                     .collect()
                     .get(0).f1;
-            maximumGroupSizes.add(maxGroupSize);
+            groupSizeMaximums.add(maxGroupSize);
             
-            long averageGroupSize = groupId_groupSize
+            final double averageGroupSize = groupId_groupSize
                     .sum(1)
                     .collect()
-                    .get(0).f0 / ccCount;
-            averageGroupSizes.add(averageGroupSize);
+                    .get(0).f0 / (double)ccCount;
+            groupSizeAverages.add(averageGroupSize);
+            
+            double stdDevSum = groupId_groupSize
+                    .map(new MapFunction<Vertex<Long, Long>, Double>() {
+                        @Override
+                        public Double map(Vertex<Long, Long> t) throws Exception {
+                            return t.f1 - averageGroupSize;
+                        }
+                    })
+                    .reduce(new ReduceFunction<Double>() {
+                        @Override
+                        public Double reduce(Double a, Double b) throws Exception {
+                            return a + b;
+                        }
+                    })
+                    .collect()
+                    .get(0).longValue();
+            double stdDev = Math.sqrt(stdDevSum / ccCount);
+            groupSizeStandardDeviations.add(stdDev);
         }
 
         System.out.println("Connectedness");
         for (int i = 0; i < months.size(); i++) {
-            System.out.println("Month " + months.get(i) + " has " + counts.get(i) + " connected components");
+            System.out.println("Month " + months.get(i) +
+                    " | count: " + counts.get(i) +
+                    " | min: " + groupSizeMinimums.get(i) +
+                    " | max: " + groupSizeMaximums.get(i) +
+                    " | avg: " + groupSizeAverages.get(i) +
+                    " | std: " + groupSizeStandardDeviations.get(i));
         }
     }
 
