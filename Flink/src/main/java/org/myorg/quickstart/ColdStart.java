@@ -36,7 +36,7 @@ public class ColdStart implements ProgramDescription {
 
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        String filePath = "youtube";
+        String filePath = "facebook";
 
         DataSet<Tuple3<Long, Long, Long>> edges = env.readCsvFile(filePath)
                 .fieldDelimiter(" ")
@@ -124,7 +124,7 @@ public class ColdStart implements ProgramDescription {
             std[i] = Math.sqrt(std[i]/(double)users);
         }
         for (int i = 0; i < results.length; i++) {
-            System.out.println("Month " + i + ": " + results[i] +" with std: "+std[i]);
+            System.out.println(i-446 + "\t" + results[i] +"\t"+std[i]);
         }
 
         //System.out.println(groupedGraph.count());
