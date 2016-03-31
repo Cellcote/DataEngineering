@@ -18,7 +18,7 @@
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
-\documentclass[archE1,portrait]{baposter}
+\documentclass[archE1,portrait,draft]{baposter}
 
 %841mm x 1189mm
 \usepackage[font=small,labelfont=bf]{caption} % Required for specifying captions to tables and figures
@@ -113,9 +113,9 @@ Size        & 15,5 MB  & 257,1 MB  & 901,5 MB   &  \\ \cline{1-4}
 
 \underline{\textbf{Temporal aspects}}
 \begin{itemize}
-\item How long does it take for a new user to achieve a certain number of connections?
-\item Degrees of separation, in how many steps can you go from one user to any other? How does this evolve over time?
-\item How ``connected'' is each of the graphs? How many connected components are there, and how does this change over time?
+\item How long does it take for a new user to achieve a certain \textbf{number of connections}?
+\item \textbf{Degrees of separation}, in how many steps can you go from one user to any other? How does this evolve over time?
+\item How \textbf{``connected''} is each of the graphs? How many connected components are there, and how does this change over time?
 \end{itemize}
 
 
@@ -131,13 +131,13 @@ Size        & 15,5 MB  & 257,1 MB  & 901,5 MB   &  \\ \cline{1-4}
 \headerbox{Results}{name=results2,span=4,column=0,below=introduction}{
 \begin{figure}[H]
 \centering
-% \begin{minipage}[b]{0.45\linewidth}
-% 	\includegraphics[width=1\linewidth]{edges.png}
-% \end{minipage}
-% \quad
-% \begin{minipage}[b]{0.45\linewidth}
-% 	\includegraphics[width=1\linewidth]{std-dev.png}
-% \end{minipage}
+\begin{minipage}[b]{0.45\linewidth}
+	\includegraphics[width=1\linewidth]{edges.png}
+\end{minipage}
+\quad
+\begin{minipage}[b]{0.45\linewidth}
+	\includegraphics[width=1\linewidth]{std-dev.png}
+\end{minipage}
 
 \begin{minipage}[b]{0.3\linewidth}
 	\includegraphics[width=1\linewidth]{FacebookConnectedComponents.png}
@@ -151,16 +151,23 @@ Size        & 15,5 MB  & 257,1 MB  & 901,5 MB   &  \\ \cline{1-4}
 
 \end{figure}
 }
-
+\headerbox{Results}{name=results,span=2,column=0,below=results2}{
+\begin{figure}[H]
+	\centering
+\begin{minipage}[b]{0.8\linewidth}
+	\includegraphics[width=1\linewidth]{FacebookDegreesOfSeperation.png}
+\end{minipage}
+\end{figure}
+}
 
 %----------------------------------------------------------------------------------------
 %	CONCLUSIONS
 %----------------------------------------------------------------------------------------
-\headerbox{Conclusions}{name=conclusion,span=4,column=0,below=results2}{
+\headerbox{Conclusions}{name=conclusion,span=2,column=2,below=results2}{
 \begin{itemize}
 \item Conclusion 1
 \item Conclusion 2
-\item Conclusion 3
+\item The number of connected components for the Facebook dataset decreases over time. A possible explanation for this is that groups of friends get bigger. YouTube subscribers follow a similar pattern. As channels get bigger, they become central \textbf{hubs} and they connect people to each other. The Flickr dataset does not show interesting characteristics regarding connected components.
 \end{itemize}
 }
 
