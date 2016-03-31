@@ -59,15 +59,15 @@ public class ConnectedComponentsProperty implements ProgramDescription {
     public static void main(String[] args) throws Exception {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        String filePath = "data/facebook-wosn-links/out.facebook-wosn-links";
+        //String filePath = "data/facebook-wosn-links/out.facebook-wosn-links";
         //String filePath = "data/youtube-u-growth/out.youtube-u-growth";
-        //String filePath = "data/flickr-growth/out.flickr-growth";
+        String filePath = "data/flickr-growth/out.flickr-growth";
 
         DataSet<Tuple3<Long, Long, Long>> edges = env
                 .readCsvFile(filePath)
                 .fieldDelimiter(" ")
                 .ignoreComments("%")
-                .includeFields("1101") //1101 for facebook and youtube, 11001 for flickr
+                .includeFields("11001") //1101 for facebook and youtube, 11001 for flickr
                 .types(Long.class, Long.class, Long.class);
 
         Graph<Long, Long, Long> graph = Graph.fromTupleDataSet(edges, new InitVertices(), env).getUndirected();
@@ -161,7 +161,7 @@ public class ConnectedComponentsProperty implements ProgramDescription {
                     .map(new MapFunction<Vertex<Long, Long>, Double>() {
                         @Override
                         public Double map(Vertex<Long, Long> t) throws Exception {
-                            return t.f1 - averageGroupSize;
+                            return (t.f1 - averageGroupSize) * (t.f1 - averageGroupSize);
                         }
                     })
                     .reduce(new ReduceFunction<Double>() {
@@ -173,6 +173,7 @@ public class ConnectedComponentsProperty implements ProgramDescription {
                     .collect()
                     .get(0).longValue();
             double stdDev = Math.sqrt(stdDevSum / ccCount);
+            System.out.println(stdDev);
             groupSizeStandardDeviations.add(stdDev);
         }
 
@@ -184,6 +185,15 @@ public class ConnectedComponentsProperty implements ProgramDescription {
                     " | max: " + groupSizeMaximums.get(i) +
                     " | avg: " + groupSizeAverages.get(i) +
                     " | std: " + groupSizeStandardDeviations.get(i));
+        }
+        
+        for (int i = 0; i < months.size(); i++) {
+            System.out.println(months.get(i) + "," +
+                    counts.get(i) + "," +
+                    groupSizeMinimums.get(i) + "," +
+                    groupSizeMaximums.get(i) + "," +
+                    groupSizeAverages.get(i) + "," +
+                    groupSizeStandardDeviations.get(i));
         }
     }
 
